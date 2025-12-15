@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class Administrator extends Person implements Crud {
+public class Administrator extends Person implements AdministratorCreatable, AdministratorReadable {
     public Administrator() {
     }
 
@@ -14,7 +14,7 @@ public class Administrator extends Person implements Crud {
     }
 
     @Override
-    public void create() {
+    public void createAdministrator() {
         HashMap<String, String> map = new HashMap<>();
         map.put("nama",String.format("'%s'",getNama()));
         map.put("username", String.format("'%s'",getUsername()));
@@ -27,21 +27,11 @@ public class Administrator extends Person implements Crud {
             System.out.println("Data Pustakawan Baru Telah Ditambahkan");
         }else {
             System.out.println("Data Pustakawan Baru gagal ditambah");
-        }
+        } // reuse logic lama
     }
 
     @Override
-    public void update() {
-
-    }
-
-    @Override
-    public void delete() {
-
-    }
-
-    @Override
-    public ArrayList read() throws SQLException {
+    public ArrayList readAdministrator() throws SQLException {
         ResultSet resultSet = DBHelper.selectAll(getTABEL(),"role = 1");
         ArrayList<Administrator> allAdministrator = new ArrayList<>();
         while (true) {
@@ -61,6 +51,8 @@ public class Administrator extends Person implements Crud {
                 e.printStackTrace();
             }
         }
-        return allAdministrator;
+        return allAdministrator; // reuse logic lama
     }
+
+
 }
