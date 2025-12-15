@@ -1,36 +1,45 @@
 package com.company;
 
-import com.company.*;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class View {
+
+    // Inisialisasi Repository
+    private IBukuRepository bukuRepo = new BukuRepository();
+    private AnggotaRepository anggotaRepo = new AnggotaRepository();
+    // Tambahkan Repository Transaksi
+    private TransaksiRepository transaksiRepo = new TransaksiRepository();
+
     public void viewTambahAnggota() {
         Scanner scn = new Scanner(System.in);
         System.out.println("Masukan Data Anggota Baru");
-        System.out.println("Nama        : ");
+        System.out.print("Nama        : ");
         String nama = scn.nextLine();
-        System.out.println("Username    : ");
+        System.out.print("Username    : ");
         String username = scn.nextLine();
-        System.out.println("Password    : ");
+        System.out.print("Password    : ");
         String password = scn.nextLine();
 
         Anggota anggota = new Anggota(0, nama, username, password, 3);
-        anggota.create();
+        
+        boolean isSuccess = anggotaRepo.create(anggota);
+
+        if (isSuccess) {
+            System.out.println("Data Anggota Baru Telah Ditambahkan");
+        } else {
+            System.out.println("Data Anggota Baru gagal ditambah");
+        }
     }
 
-    //View untuk Buku
-
     public void viewDataBuku() {
-        Buku buku = new Buku();
-        ArrayList<Buku> allBuku = new ArrayList<>(buku.read());
+        ArrayList<Buku> allBuku = bukuRepo.getAll();
+        
         System.out.println("NO | Judul Buku | Pengarang | Penerbit | Jumlah");
         int i = 1;
-        for (Buku someBuku :
-                allBuku) {
+        for (Buku someBuku : allBuku) {
             System.out.println(String.format("%s | %s | %s | %s | %s"
                     , i, someBuku.getJudulBuku(), someBuku.getPengarang(), someBuku.getPenerbit(), someBuku.getKetersediaan()));
             i++;
@@ -41,16 +50,22 @@ public class View {
         Scanner scn = new Scanner(System.in);
         try {
             System.out.println("Inputkan Data Buku");
-            System.out.println("Judul Buku :");
+            System.out.print("Judul Buku : ");
             String judul = scn.nextLine();
-            System.out.println("Pengarang : ");
+            System.out.print("Pengarang : ");
             String pengarang = scn.nextLine();
-            System.out.println("Penerbit : ");
+            System.out.print("Penerbit : ");
             String penerbit = scn.nextLine();
-            System.out.println("Jumlah Buku : ");
+            System.out.print("Jumlah Buku : ");
             int jumlah = scn.nextInt();
+            
             Buku buku = new Buku(0, judul, pengarang, penerbit, jumlah);
-            buku.create();
+            
+            if(bukuRepo.insert(buku)){
+                System.out.println("Buku Berhasil Ditambahkan");
+            } else {
+                System.out.println("Buku Gagal Ditambahkan");
+            }
         } catch (Exception e) {
             System.out.println("Inputan Anda Tidak Valid");
         }
@@ -58,18 +73,19 @@ public class View {
 
     public void viewHapusBuku() {
         Scanner scn = new Scanner(System.in);
-        int id;
         System.out.println("Masukan ID buku yang ingin dihapus!");
         try {
             System.out.print("ID Buku : ");
-            id = scn.nextInt();
-            Buku buku = new Buku();
-            buku.setIdBuku(id);
-            buku.delete();
+            int id = scn.nextInt();
+            
+            if(bukuRepo.delete(id)){
+                System.out.println("Buku Berhasil Dihapus");
+            } else {
+                System.out.println("Buku Gagal Dihapus, ID mungkin salah");
+            }
         } catch (Exception e) {
             System.out.println("Inputan Anda Tidak Valid");
         }
-
     }
 
     public void viewEditBuku() {
@@ -85,64 +101,57 @@ public class View {
         String penerbit = scn.nextLine();
         System.out.print("Jumlah : ");
         int jumlah = sc.nextInt();
+        
         Buku buku = new Buku(id, judul, pengarang, penerbit, jumlah);
-        buku.update();
+        
+        if(bukuRepo.update(buku)){
+            System.out.println("Buku Berhasil Diedit");
+        } else {
+            System.out.println("Buku Gagal Diedit");
+        }
     }
 
     public void viewSearchBerdasarkan(int key) {
         Scanner scn = new Scanner(System.in);
-        Buku buku = new Buku();
-        ArrayList<Buku> hasil = new ArrayList<>();
+        ArrayList<Buku> hasil;
+        String column = "";
+        
         if (key == 1) {
             System.out.print("Masukan Judul Buku : ");
-            String keyword = scn.nextLine();
-            try {
-                hasil.addAll(buku.read("judul_buku", keyword));
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            column = "judul_buku";
         } else if (key == 2) {
             System.out.print("Masukan Judul Penerbit : ");
-            String keyword = scn.nextLine();
-            try {
-                hasil.addAll(buku.read("penerbit", keyword));
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            column = "penerbit";
         } else {
             System.out.print("Masukan Judul Pengarang : ");
-            String keyword = scn.nextLine();
-            try {
-                hasil.addAll(buku.read("pengarang", keyword));
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            column = "pengarang";
         }
+
+        String keyword = scn.nextLine();
+        
+        hasil = bukuRepo.search(column, keyword);
+
         if (hasil.isEmpty()) {
             System.out.println("Buku Masih Belum Tersedia");
         } else {
             int i = 1;
-            for (Buku someBuku :
-                    hasil) {
+            for (Buku someBuku : hasil) {
                 System.out.println(String.format("%s | %s | %s | %s | %s"
                         , i, someBuku.getJudulBuku(), someBuku.getPengarang(), someBuku.getPenerbit(), someBuku.getKetersediaan()));
                 i++;
             }
         }
-
     }
 
-    //View Pustakawan
-
+    //View Pustakawan (Belum di-refactor, masih menggunakan cara lama sesuai Pustakawan.java)
     public void viewDataPustakawan() throws SQLException {
         Pustakawan pustakawan = new Pustakawan();
         ArrayList<Pustakawan> allpustakawan = new ArrayList<>(pustakawan.read());
         int i = 1;
         System.out.println("No | Nama | Username | Password");
-        for (Pustakawan pustakawan1 :
-                allpustakawan) {
-            System.out.println(String.format("%s | %s | %s | %s " +
-                    "", i, pustakawan1.getNama(), pustakawan1.getUsername(), pustakawan1.getPassword()));
+        for (Pustakawan pustakawan1 : allpustakawan) {
+            System.out.println(String.format("%s | %s | %s | %s ", 
+                    i, pustakawan1.getNama(), pustakawan1.getUsername(), pustakawan1.getPassword()));
             i++;
         }
     }
@@ -160,23 +169,19 @@ public class View {
         pustakawan.create();
     }
 
-    //ViewTransaksiBuku
-
+    // --- REVISI: Menggunakan TransaksiRepository ---
+    
     public void viewDataTransaksiAnggota() {
         Scanner sc = new Scanner(System.in);
         System.out.print("Inputkan Nama Anggota :");
         String nama = sc.nextLine();
-        TransaksiBuku transaksiBuku = new TransaksiBuku();
-        ArrayList<TransaksiBuku> allTransaksi = new ArrayList<>();
-        try {
-            allTransaksi = transaksiBuku.read(nama);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        
+        // Menggunakan Repository
+        ArrayList<TransaksiBuku> allTransaksi = transaksiRepo.getByPeminjam(nama);
+        
         System.out.println("NO | Judul Buku | Pengarang | Penerbit | Jumlah");
         int i = 1;
-        for (TransaksiBuku transaksi :
-                allTransaksi) {
+        for (TransaksiBuku transaksi : allTransaksi) {
             System.out.println(String.format("%s | %s | %s | %s | %s | %s"
                     , i, transaksi.getPeminjam(), transaksi.getBuku(), transaksi.getTanggal_pinjam(), transaksi.getTanggal_kembali(), transaksi.getSts_pengembalian()));
             i++;
@@ -185,57 +190,54 @@ public class View {
 
     public void viewPeminjaman() {
         Scanner sc = new Scanner(System.in);
-        Scanner scn = new Scanner(System.in);
         ArrayList<Buku> bukus = new ArrayList<>();
-        Anggota anggota = new Anggota();
+        
         System.out.print("Masukan Jumlah Buku yang dipinjam(Maksimal 3) : ");
         int jumlah = sc.nextInt();
+        
         if (jumlah > 3) {
             System.out.println("Maksimal buku yang dipinjam adalah 3");
         } else {
-            System.out.printf("Masukan Id Anggota : ");
+            System.out.print("Masukan Id Anggota : ");
             int idAnggota = sc.nextInt();
-            anggota.setIdPerson(idAnggota);
-            try {
-                if (anggota.cekAnggota()) {
-                    Buku buku;
-                    TransaksiBuku transaksiBuku;
-                    Person person;
+            
+            Anggota anggota = anggotaRepo.getById(idAnggota);
+
+            if (anggota != null) {
+                if (!anggotaRepo.hasOutstandingLoans(idAnggota)) {
                     for (int i = 0; i < jumlah; i++) {
-                        buku = new Buku();
-                        transaksiBuku = new TransaksiBuku();
                         System.out.print("Masukan id Buku yang dipinjam : ");
                         int idBuku = sc.nextInt();
-                        buku.setIdBuku(idBuku);
-                        try {
-                            buku.getBukuById(idBuku);
+                        
+                        Buku buku = bukuRepo.getById(idBuku);
+                        
+                        if (buku != null) {
                             bukus.add(buku);
-                            transaksiBuku.setBuku(String.valueOf(idBuku));
-                            transaksiBuku.setPeminjam(String.valueOf(idAnggota));
-                            transaksiBuku.create();
-                        } catch (SQLException e) {
-                            e.printStackTrace();
+                            // Simpan Transaksi Menggunakan Repository
+                            transaksiRepo.create(idAnggota, idBuku);
+                        } else {
+                            System.out.println("ID Buku " + idBuku + " tidak ditemukan.");
                         }
                     }
+                    
                     try {
-                        System.out.print("Nama : " + anggota.read(idAnggota));
-                        System.out.printf("Telah Meminjam Buku sebanyak " + jumlah + " Yaitu dengan rincian berikut :");
+                        System.out.print("Nama : " + anggota.getNama());
+                        System.out.printf(" Telah Meminjam Buku sebanyak " + jumlah + " Yaitu dengan rincian berikut :\n");
                         int i = 1;
-                        for (Buku buk :
-                                bukus) {
+                        for (Buku buk : bukus) {
                             System.out.println(String.format("%s. %s | %s | %s", i, buk.getJudulBuku(), buk.getPengarang(), buk.getPenerbit()));
                             i++;
                             buk.setKetersediaan(buk.getKetersediaan() - 1);
-                            buk.update();
+                            bukuRepo.update(buk);
                         }
-                    } catch (SQLException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 } else {
-                    System.out.println("Id tidak ditemukan atau Masih Memiliki Tanggungan Buku yang belum dikembalikan");
+                    System.out.println("Anggota Masih Memiliki Tanggungan Buku yang belum dikembalikan");
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
+            } else {
+                System.out.println("Id Anggota tidak ditemukan");
             }
         }
     }
@@ -245,40 +247,51 @@ public class View {
         int jumlahPinjaman = 0;
         System.out.print("Masukan Id Anggota : ");
         int idAnggota = sc.nextInt();
+        
+        // Menggunakan helper langsung untuk hitung jumlah (opsional bisa dipindah ke repo)
         String colum[] = {"COUNT(sts_pengembalian) AS total"};
         String constrain = "peminjam = " + idAnggota + " and sts_pengembalian = 'Belum Kembali' GROUP BY peminjam";
         ResultSet resultSet = DBHelper.selectColumn("transaksi_buku", colum, constrain);
         while (resultSet.next()) {
             jumlahPinjaman = resultSet.getInt("total");
         }
-        int i=0;
-        while (i<jumlahPinjaman){
+        
+        int i = 0;
+        while (i < jumlahPinjaman) {
             System.out.print("Masukan ID Buku yang dipinjam :");
             int idBuku = sc.nextInt();
-            Buku buku = new Buku();
-            boolean cek = buku.getBukuById(idBuku);
-            if (cek) {
-                buku.setKetersediaan(buku.getKetersediaan()+1);
-                buku.update();
-                TransaksiBuku transaksiBuku = new TransaksiBuku();
-                System.out.println(idAnggota);
-                transaksiBuku.setPeminjam(String.valueOf(idAnggota));
-                transaksiBuku.setBuku(String.valueOf(idBuku));
-                transaksiBuku.update();
+            
+            Buku buku = bukuRepo.getById(idBuku);
+            
+            if (buku != null) {
+                // Update Stok Buku
+                buku.setKetersediaan(buku.getKetersediaan() + 1);
+                bukuRepo.update(buku);
+                
+                // Update Status Transaksi Menggunakan Repository
+                boolean success = transaksiRepo.updateStatusKembali(idAnggota, idBuku);
+                if(success) {
+                    System.out.println("Buku berhasil dikembalikan.");
+                } else {
+                    System.out.println("Gagal mengupdate status transaksi.");
+                }
+                
                 i++;
+            } else {
+                System.out.println("ID Buku tidak ditemukan dalam database.");
             }
         }
     }
 
     public void viewDataTransaksi() throws SQLException {
-        TransaksiBuku transaksiBuku = new TransaksiBuku();
-        ArrayList<TransaksiBuku> allTransaksi = transaksiBuku.read();
+        // Menggunakan Repository
+        ArrayList<TransaksiBuku> allTransaksi = transaksiRepo.getAll();
+        
         System.out.println("NO | Judul Buku | Pengarang | Penerbit | Jumlah");
         int i = 1;
-        for (TransaksiBuku transaksi :
-                allTransaksi) {
+        for (TransaksiBuku transaksi : allTransaksi) {
             System.out.println(String.format("%s | %s | %s | %s | %s | %s"
-                    ,i,transaksi.getPeminjam(),transaksi.getBuku(),transaksi.getTanggal_pinjam(),transaksi.getTanggal_kembali(),transaksi.getSts_pengembalian()));
+                    , i, transaksi.getPeminjam(), transaksi.getBuku(), transaksi.getTanggal_pinjam(), transaksi.getTanggal_kembali(), transaksi.getSts_pengembalian()));
             i++;
         }
     }

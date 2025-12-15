@@ -1,0 +1,6 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "PBO1-manajemen-perpustakaan-master/lib/mysql-connector-java-8.0.17.jar"
+    ]
+}
