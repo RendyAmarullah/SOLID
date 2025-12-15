@@ -1,122 +1,139 @@
 package com.company;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 public class DBHelper {
-    public static ResultSet selectAll(String table){
-        String sql = String.format("SELECT * FROM %s", table);
-        return getResultSet(sql);
+    
+    // --- READ OPERATIONS (SELECT) ---
+    // Catatan: Idealnya method ini mengembalikan List<Object> atau menggunakan RowMapper
+    // agar koneksi bisa ditutup di sini. Namun, untuk menjaga kompatibilitas dengan
+    // kode View Anda, saya tetap mengembalikan ResultSet.
+
+    public static ResultSet selectAll(String table) {
+        return executeQuery("SELECT * FROM " + table);
     }
 
-    public static ResultSet selectAll(String table, String requirment){
-        String sql = String.format("SELECT * FROM %s WHERE %s", table, requirment);
-        return getResultSet(sql);
+    public static ResultSet selectAll(String table, String condition) {
+        return executeQuery(String.format("SELECT * FROM %s WHERE %s", table, condition));
     }
 
-    public static ResultSet selectAll(String table, String joinTable, String foreignKey){
-        String sql = String.format("SELECT * FROM %s JOIN %s ON %s.%s = %s.id", table, joinTable, table, foreignKey, joinTable);
-        return getResultSet(sql);
+    public static ResultSet selectAll(String table, String joinTable, String foreignKey) {
+        String query = String.format("SELECT * FROM %s JOIN %s ON %s.%s = %s.id", 
+                                     table, joinTable, table, foreignKey, joinTable);
+        return executeQuery(query);
     }
 
-    public static ResultSet selectAll(String table, String requirment, String joinTable, String foreignKey){
-        String sql = String.format("SELECT * FROM %s JOIN %s ON %s.%s = %s.id WHERE %s", table, joinTable, table, foreignKey, joinTable, requirment);
-        return getResultSet(sql);
+    public static ResultSet selectAll(String table, String condition, String joinTable, String foreignKey) {
+        String query = String.format("SELECT * FROM %s JOIN %s ON %s.%s = %s.id WHERE %s", 
+                                     table, joinTable, table, foreignKey, joinTable, condition);
+        return executeQuery(query);
     }
 
-    public static ResultSet selectColumn(String table, String[] columns){
-        String col = "";
-        for(String s : columns){
-            col += s + ", ";
+    public static ResultSet selectColumn(String table, String[] columns) {
+        String columnList = String.join(", ", columns);
+        return executeQuery(String.format("SELECT %s FROM %s", columnList, table));
+    }
+
+    public static ResultSet selectColumn(String table, String[] columns, String condition) {
+        String columnList = String.join(", ", columns);
+        return executeQuery(String.format("SELECT %s FROM %s WHERE %s", columnList, table, condition));
+    }
+
+    // --- WRITE OPERATIONS (INSERT, UPDATE, DELETE) ---
+
+    public static boolean insert(String table, Map<String, String> data) {
+        if (data.isEmpty()) return false;
+
+        // Membangun Query: INSERT INTO table (col1, col2) VALUES (?, ?)
+        StringJoiner columns = new StringJoiner(", ");
+        StringJoiner placeholders = new StringJoiner(", ");
+        List<String> values = new ArrayList<>();
+
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            columns.add(entry.getKey());
+            placeholders.add("?");
+            values.add(entry.getValue());
         }
-        col = col.substring(0, col.length() - 2);
-        String sql = String.format("SELECT %s FROM %s", col, table);
-        return getResultSet(sql);
+
+        String sql = String.format("INSERT INTO %s (%s) VALUES (%s)", table, columns, placeholders);
+        
+        return executeUpdate(sql, values);
     }
 
-    public static ResultSet selectColumn(String table, String[] columns, String requirment){
-        String col = "";
-        for(String s : columns){
-            col += s + ", ";
+    public static boolean update(String table, Map<String, String> data, String condition) {
+        if (data.isEmpty()) return false;
+
+        // Membangun Query: UPDATE table SET col1 = ?, col2 = ? WHERE condition
+        StringJoiner setClause = new StringJoiner(", ");
+        List<String> values = new ArrayList<>();
+
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            setClause.add(entry.getKey() + " = ?");
+            values.add(entry.getValue());
         }
-        col = col.substring(0, col.length() - 2);
-        String sql = String.format("SELECT %s FROM %s WHERE %s", col, table, requirment);
-        return getResultSet(sql);
+
+        String sql = String.format("UPDATE %s SET %s WHERE %s", table, setClause, condition);
+
+        return executeUpdate(sql, values);
     }
 
-    public static boolean insert(String table, Map<String, String> params){
-        String columns = table + "(";
-        String values = "VALUES(";
-        for(String key : params.keySet()){
-            columns += String.format("%s,", key);
-        }
-        columns = columns.substring(0, columns.length() - 1);
-        columns += ") ";
+    public static boolean delete(String table, String condition) {
+        String sql = String.format("DELETE FROM %s WHERE %s", table, condition);
+        // Delete biasanya tidak butuh parameter bind jika condition sudah string jadi
+        // Tapi idealnya 'condition' pun menggunakan parameter (ex: "id=?").
+        // Untuk saat ini kita jalankan langsung.
+        return executeUpdate(sql, new ArrayList<>());
+    }
 
-        for(String val : params.values()){
-            values += String.format("%s,", val);
-        }
-        values = values.substring(0, values.length() - 1);
-        values += ") ";
+    // --- HELPER METHODS (PRIVATE) ---
 
-        String sql = "INSERT INTO " + columns + values;
-        System.out.println(sql);
+    /**
+     * Menjalankan query SELECT.
+     * Peringatan: ResultSet yang dikembalikan terikat pada koneksi yang terbuka.
+     * Pastikan caller menutup ResultSet (dan Statement/Connection terkait jika memungkinkan)
+     */
+    private static ResultSet executeQuery(String sql) {
+        // System.out.println("DEBUG SQL: " + sql); 
         try {
-            DBConection conn = new DBConection();
-            Statement statement = conn.connection().createStatement();
-            return statement.executeUpdate(sql) > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public static boolean update(String table, Map<String, String> params, String clause){
-        DBConection dbConection = new DBConection();
-        String sql = "UPDATE " + table + " SET ";
-        for(int i=0; i<params.size(); i++){
-            String col = (String) params.keySet().toArray()[i];
-            String val = (String) params.values().toArray()[i];
-            sql += col + " = " + val;
-            if(i != params.size() - 1){
-                sql += ", ";
-            }
-        }
-        sql += " WHERE " + clause;
-        System.out.println(sql);
-        try {
-            Statement statement = dbConection.connection().createStatement();
-            return statement.executeUpdate(sql) > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public static boolean delete(String table, String clause){
-        String sql = String.format("DELETE FROM %s WHERE %s ;",table,clause);
-        System.out.println(sql);
-        DBConection dbConection = new DBConection();
-        try {
-            Statement statement = dbConection.connection().createStatement();
-            return statement.executeUpdate(sql) > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-    private static ResultSet getResultSet(String sql) {
-       // System.out.println(sql);
-        ResultSet resultSet = null;
-        try {
+            // Menggunakan DBConection (sesuai nama file asli Anda)
             DBConection db = new DBConection();
             Statement statement = db.connection().createStatement();
-            resultSet = statement.executeQuery(sql);
+            return statement.executeQuery(sql);
         } catch (SQLException e) {
+            System.err.println("Error executing query: " + sql);
             e.printStackTrace();
+            return null;
         }
-        return resultSet;
+    }
+
+    /**
+     * Menjalankan query INSERT/UPDATE/DELETE dengan PreparedStatement.
+     * Menggunakan try-with-resources untuk menutup koneksi secara otomatis.
+     */
+    private static boolean executeUpdate(String sql, List<String> parameters) {
+        // System.out.println("DEBUG SQL: " + sql);
+        try (Connection conn = new DBConection().connection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            // Mengisi nilai parameter (?) dengan data yang aman
+            for (int i = 0; i < parameters.size(); i++) {
+                pstmt.setString(i + 1, parameters.get(i));
+            }
+
+            return pstmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("Error executing update: " + sql);
+            e.printStackTrace();
+            return false;
+        }
     }
 }

@@ -9,6 +9,4 @@ public class Anggota extends Person {
         super(idPerson, nama, username, password, role);
     }
 
-    // Getter dan Setter sudah diwarisi dari class Person,
-    // jadi tidak perlu ditulis ulang kecuali ada atribut khusus tambahan.
 }
